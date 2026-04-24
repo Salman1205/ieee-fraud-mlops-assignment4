@@ -1,0 +1,21 @@
+{
+  "title": "System Health Dashboard",
+  "panels": [
+    {
+      "title": "Request Rate",
+      "type": "timeseries",
+      "targets": [{"expr": "rate(fraud_api_requests_total[1m])"}]
+    },
+    {
+      "title": "P95 Latency",
+      "type": "timeseries",
+      "targets": [{"expr": "histogram_quantile(0.95, sum(rate(fraud_api_latency_seconds_bucket[5m])) by (le))"}]
+    },
+    {
+      "title": "Error Rate",
+      "type": "timeseries",
+      "targets": [{"expr": "rate(fraud_api_errors_total[1m])"}]
+    }
+  ],
+  "schemaVersion": 36
+}

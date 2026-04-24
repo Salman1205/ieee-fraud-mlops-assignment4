@@ -1,0 +1,11 @@
+{
+  "title": "Data Drift Dashboard",
+  "panels": [
+    {
+      "title": "Drift Score",
+      "type": "timeseries",
+      "targets": [{"expr": "fraud_drift_score"}]
+    }
+  ],
+  "schemaVersion": 36
+}

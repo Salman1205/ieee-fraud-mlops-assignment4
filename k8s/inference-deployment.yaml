@@ -1,0 +1,40 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: fraud-inference
+  namespace: fraud-mlops
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: fraud-inference
+  template:
+    metadata:
+      labels:
+        app: fraud-inference
+    spec:
+      containers:
+        - name: api
+          image: ghcr.io/your-user/fraud-mlops/inference:latest
+          ports:
+            - containerPort: 8000
+          resources:
+            requests:
+              cpu: "200m"
+              memory: "256Mi"
+            limits:
+              cpu: "1000m"
+              memory: "1024Mi"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: fraud-inference-svc
+  namespace: fraud-mlops
+spec:
+  selector:
+    app: fraud-inference
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 8000

@@ -1,0 +1,26 @@
+data:
+  raw_dir: data/Data/Data
+  max_rows: 120000
+  artifacts_dir: artifacts
+  target_col: isFraud
+  id_col: TransactionID
+  validation_split_date_col: TransactionDT
+
+preprocessing:
+  high_cardinality_threshold: 50
+  numeric_impute: median
+  categorical_impute: most_frequent
+  target_encoding_smoothing: 20
+
+training:
+  random_state: 42
+  test_size: 0.2
+  cv_folds: 3
+  threshold: 0.5
+  fn_cost: 500
+  fp_cost: 10
+  class_weight_positive: 6
+
+drift:
+  threshold: 0.15
+  periodic_days: 7

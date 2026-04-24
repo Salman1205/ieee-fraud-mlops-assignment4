@@ -1,0 +1,115 @@
+name: Fraud MLOps CI/CD
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: ["**"]
+  workflow_dispatch:
+  repository_dispatch:
+    types: [performance_drop, data_drift_alert]
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+      - name: Install deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+      - name: Lint
+        run: ruff check .
+      - name: Unit tests
+        run: pytest -q
+      - name: Data validation check
+        run: python -m src.train_models --config configs/train_config.yaml || true
+
+  build:
+    needs: ci
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build and push training image
+        run: |
+          docker build -f Dockerfile.training -t ghcr.io/${{ github.repository_owner }}/fraud-mlops/training:${{ github.sha }} .
+          docker push ghcr.io/${{ github.repository_owner }}/fraud-mlops/training:${{ github.sha }}
+      - name: Build and push inference image
+        run: |
+          docker build -f Dockerfile.inference -t ghcr.io/${{ github.repository_owner }}/fraud-mlops/inference:${{ github.sha }} .
+          docker push ghcr.io/${{ github.repository_owner }}/fraud-mlops/inference:${{ github.sha }}
+
+  deploy:
+    needs: build
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+      - name: Install deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+      - name: Trigger pipeline flow (MLflow/local orchestration)
+        run: |
+          python -m src.train_models --config configs/train_config.yaml || true
+          python -m src.cost_sensitive --config configs/train_config.yaml || true
+          python -m src.drift_simulation --config configs/train_config.yaml || true
+          python -m src.retraining --config configs/train_config.yaml || true
+      - name: Deploy inference manifest (if cluster available)
+        run: |
+          echo "kubectl apply -f k8s/inference-deployment.yaml"
+      - name: Upload deployment evidence artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: deploy-evidence
+          path: |
+            artifacts/metrics/model_metrics.json
+            artifacts/cost_sensitive/comparison.json
+            artifacts/drift/drift_report.json
+            artifacts/retraining/decision.json
+          if-no-files-found: ignore
+
+  intelligent_retrain:
+    if: github.event_name == 'repository_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+      - name: Install deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+      - name: Run drift + retraining decision
+        run: |
+          python -m src.drift_simulation --config configs/train_config.yaml
+          python -m src.retraining --config configs/train_config.yaml
+      - name: Log retraining evidence
+        run: |
+          ls -R artifacts || true
+      - name: Upload retraining evidence artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: intelligent-retrain-evidence
+          path: |
+            artifacts/drift/drift_report.json
+            artifacts/retraining/decision.json
+            artifacts/retraining/state.json
+          if-no-files-found: ignore

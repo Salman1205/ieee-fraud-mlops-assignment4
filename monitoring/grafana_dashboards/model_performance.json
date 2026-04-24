@@ -1,0 +1,16 @@
+{
+  "title": "Model Performance Dashboard",
+  "panels": [
+    {
+      "title": "Current Recall",
+      "type": "timeseries",
+      "targets": [{"expr": "fraud_recall_current"}]
+    },
+    {
+      "title": "Prediction Confidence",
+      "type": "timeseries",
+      "targets": [{"expr": "histogram_quantile(0.5, sum(rate(fraud_prediction_confidence_bucket[5m])) by (le))"}]
+    }
+  ],
+  "schemaVersion": 36
+}

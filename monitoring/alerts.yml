@@ -1,0 +1,26 @@
+groups:
+  - name: fraud-alerts
+    rules:
+      - alert: FraudRecallLow
+        expr: fraud_recall_current < 0.80
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Fraud recall dropped below threshold"
+
+      - alert: DataDriftHigh
+        expr: fraud_drift_score > 0.15
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Data drift exceeded configured threshold"
+
+      - alert: ApiLatencySpike
+        expr: histogram_quantile(0.95, sum(rate(fraud_api_latency_seconds_bucket[5m])) by (le)) > 1.0
+        for: 3m
+        labels:
+          severity: warning
+        annotations:
+          summary: "P95 API latency is too high"
