@@ -16,7 +16,8 @@ def should_retrain(
     last_retrain_iso: str | None,
     periodic_days: int,
 ) -> dict:
-    now = dt.datetime.now(dt.UTC)
+    # Python 3.10 compatibility: datetime.UTC is available in newer versions.
+    now = dt.datetime.now(dt.timezone.utc)
     periodic_due = False
     if last_retrain_iso:
         last = dt.datetime.fromisoformat(last_retrain_iso)
