@@ -4,5 +4,5 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 COPY src ./src
 COPY configs ./configs
-COPY data ./data
+RUN mkdir -p data
 CMD ["python", "-m", "src.train_models", "--config", "configs/train_config.yaml"]
